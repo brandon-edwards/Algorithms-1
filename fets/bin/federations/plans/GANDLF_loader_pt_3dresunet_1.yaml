@@ -7,7 +7,7 @@
 
 aggregator_object_init:
   init_kwargs:
-    rounds_to_train: 1
+    rounds_to_train: 50
     init_model_fname: pt_3dresunet_brainmagebrats_init.pbuf 
     latest_model_fname: pt_3dresunet_brainmagebrats_latest_1.pbuf
     best_model_fname: pt_3dresunet_brainmagebrats_best_1.pbuf

@@ -258,7 +258,7 @@ class BrainMaGeModel(PyTorchFLModel):
         # set to "training" mode
         self.train()
         while subject_num < num_subjects:
-                       
+
             total_loss = 0
             for subject in train_loader:
                 if subject_num >= num_subjects:
@@ -273,8 +273,6 @@ class BrainMaGeModel(PyTorchFLModel):
                     else:
                         features = torch.cat([subject[key][torchio.DATA] for key in self.channel_keys], dim=1)
                         mask = subject['label'][torchio.DATA]
-
-                        print("\n\nTrain features with shape: {}\n".format(features.shape))
 
                         mask = one_hot(mask, self.data.class_list)
                         
@@ -338,7 +336,6 @@ class BrainMaGeModel(PyTorchFLModel):
                     # TODO: For now we zero-pad the validation images to satisfy the divisibility criterion
                     features = self.data.zero_pad(features)
                     mask = self.data.zero_pad(mask)
-                    print("\n\nValidation features with shape: {}\n".format(features.shape))
                     
                     mask = one_hot(mask, self.data.class_list)
                     
