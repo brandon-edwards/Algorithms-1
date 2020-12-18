@@ -96,7 +96,6 @@ class GANDLFData(object):
                 raise ValueError('data_category needs to be one of train, val, inference, or penalty')
 
             DataFromPickle, headers = get_dataframe_and_headers(file_data_full=self.data_path[data_category])
-            print("Dataframe for category: {} is {}".format(data_category, DataFromPickle))
             DataForTorch = ImagesFromDataFrame(dataframe=DataFromPickle, 
                                                psize=self.psize, 
                                                headers=headers, 
