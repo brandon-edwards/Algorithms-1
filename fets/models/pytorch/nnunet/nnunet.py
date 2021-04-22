@@ -78,6 +78,7 @@ class NNUnetInferenceOnlyModel():
                  *args, 
                  data,
                  native_model_weights_filepath,
+                 outputs_folder,
                  replace_with = 2, 
                  model_list = ['nnUNetTrainerV2BraTSRegions_DA3_BN_BD__nnUNetPlansv2.1_bs5',
                                'nnUNetTrainerV2BraTSRegions_DA4_BN_BD__nnUNetPlansv2.1_bs5',
@@ -105,29 +106,21 @@ class NNUnetInferenceOnlyModel():
 
         self.data = data
         self.params_folder = native_model_weights_filepath 
-        self.intermediate_out_folder = self.data.data_path 
+        self.intermediate_out_folder = outputs_folder 
         self.replace_with =  replace_with                             
         self.model_list = model_list               
         self.folds_list =  folds_list             
         self.threshold = threshold 
     
-    def run_inference_and_store_results(self,output_file_tag=''):
-        output_file_base_name = output_file_tag + "_nnunet_seg.nii.gz"
+    def run_inference_and_store_results(self, patient_id, output_file_tag=''):
         
         # passing only lists of length one to predict_cases
         for inner_list in self.data.inference_loader:
             list_of_lists = [inner_list]
             
-            # output filenames (list of one) include information about patient folder name
-            # infering patient folder name from all file paths for a sanity check
-            # (should give the same answer)
-            folder_names = [fpath.split('/')[-2] for fpath in inner_list]
-            if set(folder_names) != set(folder_names[:1]):
-                raise RuntimeError('Patient file paths: {} were found to come from different folders against expectation.'.format(inner_list)) 
-            patient_folder_name = folder_names[0]
-            output_filename = patient_folder_name + output_file_base_name
+            output_filename = output_file_tag + 'output_' + patient_id + '.nii.gz'
             
-            final_out_folder = join(self.intermediate_out_folder, patient_folder_name)
+            final_out_folder = join(self.intermediate_out_folder, 'nnunet_outputs')
 
             intermediate_output_folders = []
             
