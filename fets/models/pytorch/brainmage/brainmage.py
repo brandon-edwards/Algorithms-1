@@ -111,6 +111,7 @@ class BrainMaGeModel(PyTorchFLModel):
                  output_per_example_valscores=True,
                  val_input_shape = None,
                  val_output_shape = None,
+                 amp=False,
                  **kwargs):
         super().__init__(data=data, device=device, **kwargs)
 
@@ -155,6 +156,11 @@ class BrainMaGeModel(PyTorchFLModel):
 
         self.loss_function_kwargs = loss_function_kwargs
         self.validation_function_kwargs = validation_function_kwargs
+        self.amp = amp
+        if self.amp:
+            print('#'*10)
+            print('Will train with AMP')
+            print('#'*10)
 
         # used only when using the gandlf_data object
         # (will we crop external zero-planes, infer, then pad output with zeros OR
@@ -390,6 +396,10 @@ class BrainMaGeModel(PyTorchFLModel):
         
         # set to "training" mode
         self.train()
+
+        if self.amp:
+            scaler = torch.cuda.amp.GradScaler()
+
         while batch_num < num_batches:
                        
             for batch in train_loader:
@@ -421,24 +431,47 @@ class BrainMaGeModel(PyTorchFLModel):
                     # Making sure that the optimizer has been reset
                     self.optimizer.zero_grad()
 
-                    # Forward Propagation to get the output from the models
-                    output = self(features)
-                    nan_check(tensor=output, tensor_description='model output tensor')
+                    if self.amp:
+                        print("Device is currently: ", self.device)
+                        # TODO: Allow usage of self.device to call torch.cpu.amp or torch.cuda.amp
+                        with torch.cpu.amp.autocast(dtype=torch.bfloat16):
+                            # Forward Propagation to get the output from the models
+                            output = self(features)
+                            nan_check(tensor=output, tensor_description='model output tensor')
+                            
+                            # Computing the loss
+                            loss = self.loss_fn(output=output, 
+                                                target=mask, 
+                                                num_classes=self.label_channels, 
+                                                weights=self.dice_penalty_dict, 
+                                                class_list=self.data.class_list, 
+                                                to_scalar=False, 
+                                                **self.loss_function_kwargs)
+                    else:
+                        # Forward Propagation to get the output from the models
+                        output = self(features)
+                        nan_check(tensor=output, tensor_description='model output tensor')
+                        
+                        # Computing the loss
+                        loss = self.loss_fn(output=output, 
+                                            target=mask, 
+                                            num_classes=self.label_channels, 
+                                            weights=self.dice_penalty_dict, 
+                                            class_list=self.data.class_list, 
+                                            to_scalar=False, 
+                                            **self.loss_function_kwargs)
                     
-                    # Computing the loss
-                    loss = self.loss_fn(output=output, 
-                                        target=mask, 
-                                        num_classes=self.label_channels, 
-                                        weights=self.dice_penalty_dict, 
-                                        class_list=self.data.class_list, 
-                                        to_scalar=False, 
-                                        **self.loss_function_kwargs)
                     nan_check(tensor=loss, tensor_description='model loss tensor')
+                    if self.amp:
+                        scaler.scale(loss).backward()
 
-                    # Back Propagation for model to learn    
-                    loss.backward()
-                    #Updating the weight values
-                    self.optimizer.step()
+                        scaler.step(optimizer)
+
+                        scaler.update()
+                    else:
+                        loss.backward()
+                        self.optimizer.step()
+
                     #Pushing the dice to the cpu and only taking its value
                     loss = loss.cpu().data.item()
                     total_loss += loss
