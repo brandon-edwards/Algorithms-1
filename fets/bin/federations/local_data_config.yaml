@@ -6,6 +6,6 @@
 # to be used to create the train/val split.
 
 collaborators:
-  <fill in institution name here>:
-    fets_phase1: '<fill in absolute path to parent data directory here>'
+  col_0:
+    initial_data: /raid/
   

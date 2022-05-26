@@ -397,9 +397,6 @@ class BrainMaGeModel(PyTorchFLModel):
         # set to "training" mode
         self.train()
 
-        if self.amp:
-            scaler = torch.cuda.amp.GradScaler()
-
         while batch_num < num_batches:
                        
             for batch in train_loader:
@@ -432,7 +429,7 @@ class BrainMaGeModel(PyTorchFLModel):
                     self.optimizer.zero_grad()
 
                     if self.amp:
-                        print("Device is currently: ", self.device)
+                        # print("Device is currently: ", self.device)
                         # TODO: Allow usage of self.device to call torch.cpu.amp or torch.cuda.amp
                         with torch.cpu.amp.autocast(dtype=torch.bfloat16):
                             # Forward Propagation to get the output from the models
@@ -462,15 +459,8 @@ class BrainMaGeModel(PyTorchFLModel):
                                             **self.loss_function_kwargs)
                     
                     nan_check(tensor=loss, tensor_description='model loss tensor')
-                    if self.amp:
-                        scaler.scale(loss).backward()
-
-                        scaler.step(optimizer)
-
-                        scaler.update()
-                    else:
-                        loss.backward()
-                        self.optimizer.step()
+                    loss.backward()
+                    self.optimizer.step()
 
                     #Pushing the dice to the cpu and only taking its value
                     loss = loss.cpu().data.item()
