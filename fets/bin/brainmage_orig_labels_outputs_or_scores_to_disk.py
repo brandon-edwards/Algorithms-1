@@ -91,7 +91,8 @@ def main(data_path,
          output_pardir, 
          model_output_tag,
          device, 
-         legacy_model_flag=False):
+         legacy_model_flag=False, 
+         no_outputs_to_disk=False):
 
     # TODO: We do not currently make use of the ability for brainmage to infer by first cropping external
     #       zero planes, or inference by patching and fusing.
@@ -134,6 +135,8 @@ def main(data_path,
 
     subdir_to_DICE = {}
     dice_outpath = None
+
+    sum_scores_over_samples = None
 
     for subject in data.get_val_loader():
         first_mode_path = subject['1']['path'][0] # using this because this is only one that's always defined
@@ -178,27 +181,43 @@ def main(data_path,
 
         subdir_to_DICE[subdir_name] = dice_dict
 
-        output = np.squeeze(output.cpu().numpy())
+        if sum_scores_over_samples is None:
+            sum_scores_over_samples = dice_dict
+        else:
+            for key in dice_dict:
+                sum_scores_over_samples[key] = sum_scores_over_samples[key] + dice_dict[key]
 
-        # GANDLFData loader produces transposed output from what sitk gets from file, so transposing here.
-        output = np.transpose( output, [0, 3, 2, 1])
+        if not no_outputs_to_disk:
 
-        # process float outputs (accros output channels), providing labels as defined in values of self.class_label_map
-        output = new_labels_from_float_output(array=output,
+            output = np.squeeze(output.cpu().numpy())
+
+            # GANDLFData loader produces transposed output from what sitk gets from file, so transposing here.
+            output = np.transpose( output, [0, 3, 2, 1])
+
+            # process float outputs (accros output channels), providing labels as defined in values of self.class_label_map
+            output = new_labels_from_float_output(array=output,
                                               class_label_map=class_label_map, 
                                               binary_classification=False)
         
-        # convert array to SimpleITK image 
-        image = sitk.GetImageFromArray(output)
+            # convert array to SimpleITK image 
+            image = sitk.GetImageFromArray(output)
 
-        image.CopyInformation(sitk.ReadImage(first_mode_path))
+            image.CopyInformation(sitk.ReadImage(first_mode_path))
 
-        print("\nWriting inference NIfTI image of shape {} to {}".format(output.shape, inference_outpath))
-        sitk.WriteImage(image, inference_outpath)
-        print("\nCorresponding DICE scores were: ")
-        print("{}\n\n".format(dice_dict))
+            print("\nWriting inference NIfTI image of shape {} to {}".format(output.shape, inference_outpath))
+            sitk.WriteImage(image, inference_outpath)
+            print("\nCorresponding DICE scores were: ")
+            print("{}\n\n".format(dice_dict))
 
-    print("Saving subdir_name_to_DICE at: ", dice_outpath)
+    ave_scores_over_samples = {}
+    for key in sum_scores_over_samples:
+        ave_scores_over_samples[key] = sum_scores_over_samples[key] / len(sum_scores_over_samples)
+
+    print(f"\nThe average scores over samples for data in {data_path} where as follows\n")
+    for key, value in ave_scores_over_samples.items():
+        print(f"{key}: {value}\n")
+
+    print("\nSaving subdir_name_to_DICE at: ", dice_outpath)
     with open(dice_outpath, 'wb') as _file:
         pkl.dump(subdir_to_DICE, _file)
 
@@ -210,6 +229,7 @@ if __name__ == '__main__':
     parser.add_argument('--output_pardir', '-op', type=str, required=True)
     parser.add_argument('--model_output_tag', '-mot', type=str, default='test_tag')
     parser.add_argument('--legacy_model_flag', '-lm', action='store_true')
+    parser.add_argument('--no_outputs_to_disk', '-nout', action='store_true')
     parser.add_argument('--device', '-dev', type=str, default='cpu', required=False)
     args = parser.parse_args()
     main(**vars(args))
