@@ -20,7 +20,10 @@ from fets.models.pytorch.brainmage.losses import fets_phase2_validation
 
 from GANDLF.utils import one_hot
 
-
+"""
+This script was quickly created to be used to score the FeTS Challenge 2022 final models. However, I then decide to pivot
+to use the new openfl code as that is what is being used in the challenge code. This script has not been tested!!!!!!!
+"""
 
 
 ################################################################
