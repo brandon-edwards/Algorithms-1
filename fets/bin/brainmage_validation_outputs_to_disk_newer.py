@@ -392,6 +392,11 @@ def main(data_path,
         nan_check(tensor=output, tensor_description='model output tensor')
         sanity_check_val_output_shape(output=output, val_output_shape=val_output_shape)
 
+        # TODO: remove debug below
+        print("DEBUGGING SFJKDLSAJFKDLSJFKDLJFDKSALFJDKLSJFAKDLJSFKDLJSAKFJDKLFSJDKFALJDSAKFJDKALSJFDKSLJFAKDJASFKDLJSAFKLJDKFSAJDKSALJFDK")
+        print(f"Unique output values are: ", np.unique(output))
+        break
+
         # get the validation scores
         dice_dict = fets_phase2_validation(output=output, 
                                         target=ground_truth, 
